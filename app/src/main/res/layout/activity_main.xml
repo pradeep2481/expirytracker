@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/topAppBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:title="Smart Expiry Tracker" />
+
+    <ScrollView
+        android:id="@+id/contentScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- HOME SECTION -->
+            <LinearLayout
+                android:id="@+id/homeSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/homeWelcomeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Welcome"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:id="@+id/homeSummaryText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Track expiry dates, reduce waste, and manage your fridge smarter."
+                    android:textSize="16sp"
+                    android:layout_marginBottom="16dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/homeStatsTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Quick Overview"
+                            android:textStyle="bold"
+                            android:textSize="18sp"
+                            android:layout_marginBottom="8dp" />
+
+                        <TextView
+                            android:id="@+id/homeStatsText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="No data yet" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <Button
+                    android:id="@+id/homeQuickAddButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Quick Add Product"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
+                    android:id="@+id/homeQuickSearchButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Quick Search" />
+            </LinearLayout>
+
+            <!-- ADD SECTION -->
+            <LinearLayout
+                android:id="@+id/addSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Add Product"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <EditText
+                    android:id="@+id/productNameInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Product Name"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/selectedExpiryDateText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="12dp"
+                    android:background="@android:drawable/edit_text"
+                    android:text="Select expiry date"
+                    android:clickable="true"
+                    android:focusable="false"
+                    android:layout_marginBottom="8dp" />
+
+                <DatePicker
+                    android:id="@+id/expiryDatePicker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:calendarViewShown="false"
+                    android:datePickerMode="spinner" />
+
+                <EditText
+                    android:id="@+id/alarmDaysInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Days before expiry for alarm"
+                    android:inputType="number"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/btnOk"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Save Product" />
+            </LinearLayout>
+
+            <!-- SEARCH SECTION -->
+            <LinearLayout
+                android:id="@+id/searchSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Search"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/searchProductButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Search by Product"
+                    android:layout_marginBottom="8dp" />
+
+                <EditText
+                    android:id="@+id/searchProductInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:hint="Search by Product Name"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
+                    android:id="@+id/searchProductOk"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Search Product"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/searchDateButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Search by Date"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/searchExpiryDateText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:padding="12dp"
+                    android:background="@android:drawable/edit_text"
+                    android:text="Select search date"
+                    android:clickable="true"
+                    android:focusable="false"
+                    android:layout_marginBottom="8dp" />
+
+                <DatePicker
+                    android:id="@+id/searchDatePicker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:calendarViewShown="false"
+                    android:datePickerMode="spinner" />
+
+                <Button
+                    android:id="@+id/searchOk"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Run Date Search"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/searchRangeButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Search by Range"
+                    android:layout_marginBottom="8dp" />
+
+                <DatePicker
+                    android:id="@+id/startDatePicker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:calendarViewShown="false"
+                    android:datePickerMode="spinner" />
+
+                <DatePicker
+                    android:id="@+id/endDatePicker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:calendarViewShown="false"
+                    android:datePickerMode="spinner" />
+
+                <Button
+                    android:id="@+id/searchRangeOk"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Run Range Search"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- SETTINGS SECTION -->
+            <LinearLayout
+                android:id="@+id/settingsSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Settings"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <Switch
+                    android:id="@+id/switchEnableAlerts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Enable expiry alerts"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Default alert time"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnDefaultAlertTime"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="09:00"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Default reminder lead time"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+
+                    <EditText
+                        android:id="@+id/editDefaultReminderValue"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Value"
+                        android:inputType="number" />
+
+                    <Spinner
+                        android:id="@+id/spinnerDefaultReminderUnit"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Repeat reminder interval"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+
+                    <EditText
+                        android:id="@+id/editRepeatValue"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Value"
+                        android:inputType="number" />
+
+                    <Spinner
+                        android:id="@+id/spinnerRepeatUnit"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Expiring soon threshold"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+
+                    <EditText
+                        android:id="@+id/editExpiringSoonValue"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Value"
+                        android:inputType="number" />
+
+                    <Spinner
+                        android:id="@+id/spinnerExpiringSoonUnit"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto-delete expired items after"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+
+                    <EditText
+                        android:id="@+id/editAutoDeleteValue"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Value"
+                        android:inputType="number" />
+
+                    <Spinner
+                        android:id="@+id/spinnerAutoDeleteUnit"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Date format"
+                    android:textStyle="bold" />
+
+                <Spinner
+                    android:id="@+id/spinnerDateFormat"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sort order"
+                    android:textStyle="bold" />
+
+                <Spinner
+                    android:id="@+id/spinnerSortOrder"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/btnSaveSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Save Settings"
+                    android:layout_marginBottom="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Delete Products"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
+                    android:id="@+id/deleteDateButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Delete by Expiry Date"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/deleteExpiryDateText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:padding="12dp"
+                    android:background="@android:drawable/edit_text"
+                    android:text="Select delete date"
+                    android:clickable="true"
+                    android:focusable="false"
+                    android:layout_marginBottom="8dp" />
+
+                <DatePicker
+                    android:id="@+id/deleteDatePicker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:calendarViewShown="false"
+                    android:datePickerMode="spinner" />
+
+                <Button
+                    android:id="@+id/deleteOk"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Delete"
+                    android:visibility="gone"
+                    android:layout_marginTop="8dp" />
+
+            </LinearLayout>
+            <Button
+                android:id="@+id/closeResultsButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Close Results"
+                android:visibility="gone"
+                android:layout_marginTop="12dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_marginTop="12dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:menu="@menu/bottom_nav_menu" />
+
+</LinearLayout>
