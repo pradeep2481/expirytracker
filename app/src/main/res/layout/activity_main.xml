@@ -107,23 +107,53 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="12dp" />
 
-                <EditText
-                    android:id="@+id/productNameInput"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Product Name"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
 
-                <TextView
-                    android:id="@+id/selectedExpiryDateText"
+                    <EditText
+                        android:id="@+id/productNameInput"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Product Name" />
+
+                    <ImageButton
+                        android:id="@+id/btnScanBarcode"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@android:drawable/ic_menu_camera"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Scan Barcode" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="12dp"
-                    android:background="@android:drawable/edit_text"
-                    android:text="Select expiry date"
-                    android:clickable="true"
-                    android:focusable="false"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/selectedExpiryDateText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:padding="12dp"
+                        android:background="@android:drawable/edit_text"
+                        android:text="Select expiry date"
+                        android:clickable="true"
+                        android:focusable="false" />
+
+                    <ImageButton
+                        android:id="@+id/btnScanExpiry"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@android:drawable/ic_menu_camera"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Scan Expiry" />
+                </LinearLayout>
 
                 <DatePicker
                     android:id="@+id/expiryDatePicker"

@@ -19,6 +19,7 @@ import android.widget.TextView
 import android.widget.Toast
 import android.app.TimePickerDialog
 import android.widget.ArrayAdapter
+import android.widget.ImageButton
 import android.widget.Spinner
 import android.widget.Switch
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +29,9 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import okhttp3.*
+import org.json.JSONObject
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId
@@ -52,6 +56,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchRangeButton: Button
     private lateinit var searchProductOk: Button
     private lateinit var searchRangeOk: Button
+    private lateinit var btnScanBarcode: ImageButton
+    private lateinit var btnScanExpiry: ImageButton
 
     private lateinit var expiryDatePicker: DatePicker
     private lateinit var searchDatePicker: DatePicker
@@ -69,7 +75,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var homeSection: View
     private lateinit var addSection: View
     private lateinit var searchSection: View
-    private lateinit var manageSection: View
     private lateinit var bottomNavigation: BottomNavigationView
 
     private lateinit var homeQuickAddButton: Button
@@ -95,8 +100,25 @@ class MainActivity : AppCompatActivity() {
     private var currentAlertHour: Int = 9
     private var currentAlertMinute: Int = 0
 
+    private val httpClient = OkHttpClient()
+
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    private val scannerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val scanResult = result.data?.getStringExtra(ScannerActivity.EXTRA_SCAN_RESULT)
+            val scanMode = result.data?.getStringExtra(ScannerActivity.EXTRA_SCAN_MODE)
+
+            if (scanResult != null) {
+                if (scanMode == ScannerActivity.SCAN_MODE_BARCODE) {
+                    fetchProductNameFromBarcode(scanResult)
+                } else if (scanMode == ScannerActivity.SCAN_MODE_EXPIRY) {
+                    parseAndSetScannedDate(scanResult)
+                }
+            }
+        }
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,6 +137,8 @@ class MainActivity : AppCompatActivity() {
         searchRangeButton = findViewById(R.id.searchRangeButton)
         searchProductOk = findViewById(R.id.searchProductOk)
         searchRangeOk = findViewById(R.id.searchRangeOk)
+        btnScanBarcode = findViewById(R.id.btnScanBarcode)
+        btnScanExpiry = findViewById(R.id.btnScanExpiry)
 
         selectedExpiryDateText = findViewById(R.id.selectedExpiryDateText)
         searchExpiryDateText = findViewById(R.id.searchExpiryDateText)
@@ -235,6 +259,20 @@ class MainActivity : AppCompatActivity() {
             bottomNavigation.selectedItemId = R.id.nav_search
         }
 
+        btnScanBarcode.setOnClickListener {
+            val intent = Intent(this, ScannerActivity::class.java).apply {
+                putExtra("SCAN_MODE", ScannerActivity.SCAN_MODE_BARCODE)
+            }
+            scannerLauncher.launch(intent)
+        }
+
+        btnScanExpiry.setOnClickListener {
+            val intent = Intent(this, ScannerActivity::class.java).apply {
+                putExtra("SCAN_MODE", ScannerActivity.SCAN_MODE_EXPIRY)
+            }
+            scannerLauncher.launch(intent)
+        }
+
         bottomNavigation.setOnItemSelectedListener { item ->
             hideResults()
             hideAllInputSections()
@@ -283,6 +321,67 @@ class MainActivity : AppCompatActivity() {
                 currentAlertMinute,
                 true
             ).show()
+        }
+    }
+
+    private fun fetchProductNameFromBarcode(barcode: String) {
+        val url = "https://world.openfoodfacts.org/api/v0/product/$barcode.json"
+        val request = Request.Builder().url(url).build()
+
+        productNameInput.setText("Searching...")
+
+        httpClient.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    productNameInput.setText(barcode)
+                    toast("API error: ${e.message}")
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        runOnUiThread { productNameInput.setText(barcode) }
+                        return
+                    }
+
+                    val responseData = response.body?.string()
+                    if (responseData != null) {
+                        val json = JSONObject(responseData)
+                        val status = json.optInt("status")
+                        if (status == 1) {
+                            val product = json.optJSONObject("product")
+                            val productName = product?.optString("product_name") ?: barcode
+                            runOnUiThread {
+                                productNameInput.setText(productName)
+                                toast("Product found: $productName")
+                            }
+                        } else {
+                            runOnUiThread {
+                                productNameInput.setText(barcode)
+                                toast("Product not found in database")
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    private fun parseAndSetScannedDate(dateStr: String) {
+        try {
+            val parts = dateStr.split("/", "-", ".")
+            if (parts.size == 3) {
+                val day = parts[0].toInt()
+                val month = parts[1].toInt() - 1
+                val year = parts[2].toInt()
+
+                expiryDatePicker.updateDate(year, month, day)
+                selectedExpiryDateText.text = formatDateText(year, month, day)
+                toast("Expiry date scanned: $dateStr")
+            }
+        } catch (e: Exception) {
+            toast("Could not parse date: $dateStr")
         }
     }
 

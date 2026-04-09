@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace = "com.example.expirytracker"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.expirytracker"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -33,6 +33,9 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    buildFeatures {
+        viewBinding = true
+    }
 }
 
 dependencies {
@@ -43,6 +46,20 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.recyclerview)
+
+    // ML Kit and CameraX
+    implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    
+    // Guava for ListenableFuture (required by CameraX)
+    implementation("com.google.guava:guava:33.3.1-android")
+
+    // OkHttp for API calls
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
