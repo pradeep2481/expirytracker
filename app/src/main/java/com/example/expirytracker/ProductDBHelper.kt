@@ -59,11 +59,12 @@ class ProductDBHelper(context: Context) :
         val db = readableDatabase
         val products = mutableListOf<Product>()
 
+        // Using LIKE with % wildcards for partial, case-insensitive matching
         val cursor = db.query(
             TABLE_NAME,
             arrayOf(COLUMN_ID, COLUMN_NAME, COLUMN_EXPIRY_DATE, COLUMN_ALARM_DATE),
-            "$COLUMN_NAME = ?",
-            arrayOf(name),
+            "$COLUMN_NAME LIKE ?",
+            arrayOf("%$name%"),
             null,
             null,
             "$COLUMN_EXPIRY_DATE ASC"
