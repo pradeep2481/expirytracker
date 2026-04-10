@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchRangeButton: Button
     private lateinit var searchProductOk: Button
     private lateinit var searchRangeOk: Button
+    private lateinit var homeShowAllButton: Button
     private lateinit var btnScanBarcode: ImageButton
     private lateinit var btnScanExpiry: ImageButton
 
@@ -139,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         searchRangeButton = findViewById(R.id.searchRangeButton)
         searchProductOk = findViewById(R.id.searchProductOk)
         searchRangeOk = findViewById(R.id.searchRangeOk)
+        homeShowAllButton = findViewById(R.id.homeShowAllButton)
         btnScanBarcode = findViewById(R.id.btnScanBarcode)
         btnScanExpiry = findViewById(R.id.btnScanExpiry)
 
@@ -194,6 +196,11 @@ class MainActivity : AppCompatActivity() {
 
         btnOk.setOnClickListener {
             addProduct()
+        }
+
+        homeShowAllButton.setOnClickListener {
+            bottomNavigation.selectedItemId = R.id.nav_search
+            showAllProducts()
         }
 
         searchProductButton.setOnClickListener {
@@ -342,6 +349,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private fun showAllProducts() {
+        val products = dbHelper.getAllProducts()
+        if (products.isEmpty()) {
+            toast("No products found")
+            return
+        }
+        // Sorting is handled by sortProducts which respects the user's settings
+        showResults(sortProducts(products))
     }
 
     private fun fetchProductNameFromBarcode(barcode: String) {

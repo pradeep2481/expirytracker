@@ -85,6 +85,13 @@
                     android:layout_marginBottom="8dp" />
 
                 <Button
+                    android:id="@+id/homeShowAllButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Show All Products"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
                     android:id="@+id/homeQuickSearchButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
