@@ -22,6 +22,7 @@ import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import android.widget.Spinner
 import android.widget.Switch
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -324,6 +325,23 @@ class MainActivity : AppCompatActivity() {
                 true
             ).show()
         }
+
+        // Handle system back button navigation
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (recyclerView.visibility == View.VISIBLE) {
+                    // If results are shown, hide them first
+                    hideResults()
+                } else if (bottomNavigation.selectedItemId != R.id.nav_home) {
+                    // If not on Home, go to Home
+                    bottomNavigation.selectedItemId = R.id.nav_home
+                } else {
+                    // Already on Home, exit app
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
     }
 
     private fun fetchProductNameFromBarcode(barcode: String) {

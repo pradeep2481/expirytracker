@@ -138,16 +138,22 @@ class ScannerActivity : AppCompatActivity() {
     }
 
     private fun extractDate(rawText: String): String? {
-        // OCR sometimes mistakes O for 0, I/l for 1. 
-        // We check both raw text and "digit-cleaned" text to improve font reliability.
-        val textVariations = listOf(
-            rawText,
-            rawText.replace('O', '0').replace('o', '0').replace('I', '1').replace('l', '1')
-        )
+        // Normalize text to handle common OCR mistakes
+        val cleanedText = rawText.uppercase()
+            .replace('O', '0')
+            .replace('I', '1')
+            .replace('L', '1')
+            .replace('S', '5')
+            .replace('B', '8')
+            .replace('G', '6')
+            .replace('Z', '2')
+
+        val textVariations = listOf(rawText, cleanedText)
 
         for (text in textVariations) {
-            // 1. Match DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY (including 2-digit years)
-            val fullDatePattern = Pattern.compile("\\b(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})\\b")
+            // 1. Match DD/MM/YYYY (Supports / . - and Space as separators)
+            // Fix: Regex character class correctly escaped to avoid illegal range errors
+            val fullDatePattern = Pattern.compile("(\\d{1,2})[/\\.\\- ](\\d{1,2})[/\\.\\- ](\\d{2,4})")
             val fullMatcher = fullDatePattern.matcher(text)
             if (fullMatcher.find()) {
                 val day = fullMatcher.group(1)!!.toInt()
@@ -161,9 +167,8 @@ class ScannerActivity : AppCompatActivity() {
                 }
             }
 
-            // 2. Match MM/YYYY or MM.YYYY (Common for long-life products like 04.2026)
-            // If only MM.YYYY is found, we use the last day of that month.
-            val monthYearPattern = Pattern.compile("\\b(\\d{1,2})[/.-](\\d{4})\\b")
+            // 2. Match MM/YYYY or MM.YYYY (Common for 04.2026)
+            val monthYearPattern = Pattern.compile("(\\d{1,2})[/\\.\\- ](\\d{4})")
             val myMatcher = monthYearPattern.matcher(text)
             if (myMatcher.find()) {
                 val month = myMatcher.group(1)!!.toInt()
