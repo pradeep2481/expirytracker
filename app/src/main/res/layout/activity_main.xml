@@ -186,101 +186,126 @@
                 android:orientation="vertical"
                 android:visibility="gone">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/searchContent"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Search"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Search"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp" />
+
+                    <Button
+                        android:id="@+id/searchProductButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Search by Product"
+                        android:layout_marginBottom="8dp" />
+
+                    <EditText
+                        android:id="@+id/searchProductInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:hint="Search by Product Name"
+                        android:layout_marginBottom="8dp" />
+
+                    <Button
+                        android:id="@+id/searchProductOk"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Search Product"
+                        android:visibility="gone"
+                        android:layout_marginBottom="12dp" />
+
+                    <Button
+                        android:id="@+id/searchDateButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Search by Date"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:id="@+id/searchExpiryDateText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:padding="12dp"
+                        android:background="@android:drawable/edit_text"
+                        android:text="Select search date"
+                        android:clickable="true"
+                        android:focusable="false"
+                        android:layout_marginBottom="8dp" />
+
+                    <DatePicker
+                        android:id="@+id/searchDatePicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:calendarViewShown="false"
+                        android:datePickerMode="spinner" />
+
+                    <Button
+                        android:id="@+id/searchOk"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Run Date Search"
+                        android:visibility="gone"
+                        android:layout_marginBottom="12dp" />
+
+                    <Button
+                        android:id="@+id/searchRangeButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Search by Range"
+                        android:layout_marginBottom="8dp" />
+
+                    <DatePicker
+                        android:id="@+id/startDatePicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:calendarViewShown="false"
+                        android:datePickerMode="spinner" />
+
+                    <DatePicker
+                        android:id="@+id/endDatePicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:calendarViewShown="false"
+                        android:datePickerMode="spinner" />
+
+                    <Button
+                        android:id="@+id/searchRangeOk"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Run Range Search"
+                        android:visibility="gone" />
+
+                </LinearLayout>
 
                 <Button
-                    android:id="@+id/searchProductButton"
+                    android:id="@+id/closeResultsButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Search by Product"
-                    android:layout_marginBottom="8dp" />
+                    android:text="Close Results"
+                    android:visibility="gone"
+                    android:layout_marginTop="12dp" />
 
-                <EditText
-                    android:id="@+id/searchProductInput"
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:visibility="gone"
-                    android:hint="Search by Product Name"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_marginTop="12dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-                <Button
-                    android:id="@+id/searchProductOk"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Search Product"
-                    android:visibility="gone"
-                    android:layout_marginBottom="12dp" />
-
-                <Button
-                    android:id="@+id/searchDateButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Search by Date"
-                    android:layout_marginBottom="8dp" />
-
-                <TextView
-                    android:id="@+id/searchExpiryDateText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:padding="12dp"
-                    android:background="@android:drawable/edit_text"
-                    android:text="Select search date"
-                    android:clickable="true"
-                    android:focusable="false"
-                    android:layout_marginBottom="8dp" />
-
-                <DatePicker
-                    android:id="@+id/searchDatePicker"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:calendarViewShown="false"
-                    android:datePickerMode="spinner" />
-
-                <Button
-                    android:id="@+id/searchOk"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Run Date Search"
-                    android:visibility="gone"
-                    android:layout_marginBottom="12dp" />
-
-                <Button
-                    android:id="@+id/searchRangeButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Search by Range"
-                    android:layout_marginBottom="8dp" />
-
-                <DatePicker
-                    android:id="@+id/startDatePicker"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:calendarViewShown="false"
-                    android:datePickerMode="spinner" />
-
-                <DatePicker
-                    android:id="@+id/endDatePicker"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:calendarViewShown="false"
-                    android:datePickerMode="spinner" />
-
-                <Button
-                    android:id="@+id/searchRangeOk"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Run Range Search"
-                    android:visibility="gone" />
             </LinearLayout>
 
             <!-- SETTINGS SECTION -->
@@ -502,21 +527,6 @@
                     android:layout_marginTop="8dp" />
 
             </LinearLayout>
-            <Button
-                android:id="@+id/closeResultsButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Close Results"
-                android:visibility="gone"
-                android:layout_marginTop="12dp" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                android:layout_marginTop="12dp"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
         </LinearLayout>
     </ScrollView>

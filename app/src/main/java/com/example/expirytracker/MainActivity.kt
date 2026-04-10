@@ -75,6 +75,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var homeSection: View
     private lateinit var addSection: View
     private lateinit var searchSection: View
+    private lateinit var searchContent: View
     private lateinit var bottomNavigation: BottomNavigationView
 
     private lateinit var homeQuickAddButton: Button
@@ -161,6 +162,7 @@ class MainActivity : AppCompatActivity() {
         homeSection = findViewById(R.id.homeSection)
         addSection = findViewById(R.id.addSection)
         searchSection = findViewById(R.id.searchSection)
+        searchContent = findViewById(R.id.searchContent)
         bottomNavigation = findViewById(R.id.bottomNavigation)
 
         homeQuickAddButton = findViewById(R.id.homeQuickAddButton)
@@ -881,12 +883,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun showResults(products: List<Product>) {
+        searchContent.visibility = View.GONE
         recyclerView.adapter = ProductResultAdapter(products)
         recyclerView.visibility = View.VISIBLE
         closeResultsButton.visibility = View.VISIBLE
     }
 
     private fun hideResults() {
+        searchContent.visibility = View.VISIBLE
         recyclerView.visibility = View.GONE
         closeResultsButton.visibility = View.GONE
         recyclerView.adapter = null
