@@ -17,6 +17,8 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.util.Calendar
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.regex.Pattern
@@ -111,7 +113,6 @@ class ScannerActivity : AppCompatActivity() {
                     val rawValue = barcode.rawValue
                     if (rawValue != null) {
                         sendResult(rawValue)
-                        // Close scanner inside success if needed, but client usually persists
                         return@addOnSuccessListener
                     }
                 }
@@ -136,12 +137,47 @@ class ScannerActivity : AppCompatActivity() {
             }
     }
 
-    private fun extractDate(text: String): String? {
-        // Simple regex for DD/MM/YYYY or DD-MM-YYYY
-        val pattern = Pattern.compile("\\b(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{4})\\b")
-        val matcher = pattern.matcher(text)
-        if (matcher.find()) {
-            return matcher.group()
+    private fun extractDate(rawText: String): String? {
+        // OCR sometimes mistakes O for 0, I/l for 1. 
+        // We check both raw text and "digit-cleaned" text to improve font reliability.
+        val textVariations = listOf(
+            rawText,
+            rawText.replace('O', '0').replace('o', '0').replace('I', '1').replace('l', '1')
+        )
+
+        for (text in textVariations) {
+            // 1. Match DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY (including 2-digit years)
+            val fullDatePattern = Pattern.compile("\\b(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})\\b")
+            val fullMatcher = fullDatePattern.matcher(text)
+            if (fullMatcher.find()) {
+                val day = fullMatcher.group(1)!!.toInt()
+                val month = fullMatcher.group(2)!!.toInt()
+                val yearStr = fullMatcher.group(3)!!
+                var year = yearStr.toInt()
+                
+                if (yearStr.length == 2) year += 2000
+                if (month in 1..12 && day in 1..31) {
+                    return String.format(Locale.US, "%02d/%02d/%04d", day, month, year)
+                }
+            }
+
+            // 2. Match MM/YYYY or MM.YYYY (Common for long-life products like 04.2026)
+            // If only MM.YYYY is found, we use the last day of that month.
+            val monthYearPattern = Pattern.compile("\\b(\\d{1,2})[/.-](\\d{4})\\b")
+            val myMatcher = monthYearPattern.matcher(text)
+            if (myMatcher.find()) {
+                val month = myMatcher.group(1)!!.toInt()
+                val year = myMatcher.group(2)!!.toInt()
+
+                if (month in 1..12) {
+                    val calendar = Calendar.getInstance()
+                    calendar.set(Calendar.YEAR, year)
+                    calendar.set(Calendar.MONTH, month - 1)
+                    calendar.set(Calendar.DAY_OF_MONTH, 1)
+                    val lastDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+                    return String.format(Locale.US, "%02d/%02d/%04d", lastDay, month, year)
+                }
+            }
         }
         return null
     }
