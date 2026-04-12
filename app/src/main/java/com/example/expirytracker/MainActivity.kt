@@ -18,6 +18,7 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import android.app.TimePickerDialog
+import android.speech.RecognizerIntent
 import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import android.widget.Spinner
@@ -39,6 +40,7 @@ import java.time.ZoneId
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.regex.Pattern
 
 class MainActivity : AppCompatActivity() {
 
@@ -60,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var homeShowAllButton: Button
     private lateinit var btnScanBarcode: ImageButton
     private lateinit var btnScanExpiry: ImageButton
+    private lateinit var btnVoiceInput: ImageButton
 
     private lateinit var expiryDatePicker: DatePicker
     private lateinit var searchDatePicker: DatePicker
@@ -123,6 +126,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val speechLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val results = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            if (!results.isNullOrEmpty()) {
+                parseVoiceInput(results[0])
+            }
+        }
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -143,6 +155,7 @@ class MainActivity : AppCompatActivity() {
         homeShowAllButton = findViewById(R.id.homeShowAllButton)
         btnScanBarcode = findViewById(R.id.btnScanBarcode)
         btnScanExpiry = findViewById(R.id.btnScanExpiry)
+        btnVoiceInput = findViewById(R.id.btnVoiceInput)
 
         selectedExpiryDateText = findViewById(R.id.selectedExpiryDateText)
         searchExpiryDateText = findViewById(R.id.searchExpiryDateText)
@@ -283,6 +296,10 @@ class MainActivity : AppCompatActivity() {
             scannerLauncher.launch(intent)
         }
 
+        btnVoiceInput.setOnClickListener {
+            startVoiceRecognition()
+        }
+
         bottomNavigation.setOnItemSelectedListener { item ->
             hideResults()
             hideAllInputSections()
@@ -351,22 +368,259 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun startVoiceRecognition() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Say product and expiry (e.g., 'Salmon expiring in December 2028')")
+        }
+        try {
+            speechLauncher.launch(intent)
+        } catch (e: Exception) {
+            toast("Voice recognition not supported on this device")
+        }
+    }
+
+    private fun parseVoiceInput(text: String) {
+        val input = text.trim().replace("\\s+".toRegex(), " ")
+        val lowercaseInput = input.lowercase(Locale.getDefault())
+        
+        // Comprehensive list of separators, including common misspellings
+        val separators = listOf(
+            " expiring after ", " expiring on ", " expires on ", " valid until ", 
+            " expires in ", " expiring in ", " expering ", " expiring ", 
+            " expires ", " expiry ", " after ", " on ", " in "
+        )
+        
+        var productName = input
+        var datePart = ""
+
+        for (sep in separators) {
+            val index = lowercaseInput.indexOf(sep)
+            if (index != -1) {
+                productName = input.substring(0, index).trim()
+                datePart = input.substring(index + sep.length).trim()
+                break
+            }
+        }
+
+        // Clean product name from filler words
+        val wordsToExclude = listOf("add ", "a ", "an ", "some ")
+        for (word in wordsToExclude) {
+            if (productName.lowercase().startsWith(word)) {
+                productName = productName.substring(word.length).trim()
+            }
+        }
+
+        productNameInput.setText(productName.replaceFirstChar { it.uppercase() })
+        
+        if (datePart.isNotEmpty()) {
+            val parsedCalendar = tryParseNaturalDate(datePart)
+            if (parsedCalendar != null) {
+                val year = parsedCalendar.get(Calendar.YEAR)
+                val month = parsedCalendar.get(Calendar.MONTH)
+                val day = parsedCalendar.get(Calendar.DAY_OF_MONTH)
+                
+                expiryDatePicker.updateDate(year, month, day)
+                selectedExpiryDateText.text = formatDateText(year, month, day)
+                toast("Detected: $productName expiring $datePart")
+            } else {
+                toast("Product: $productName. Could not parse date: $datePart")
+            }
+        }
+    }
+
+    private fun tryParseNaturalDate(dateStr: String): Calendar? {
+        val text = dateStr.lowercase(Locale.getDefault())
+        val calendar = Calendar.getInstance()
+        
+        // Normalize common number words to digits
+        val normalizedText = text
+            .replace("one", "1").replace("two", "2").replace("three", "3")
+            .replace("four", "4").replace("five", "5").replace("six", "6")
+            .replace("seven", "7").replace("eight", "8").replace("nine", "9")
+            .replace("ten", "10")
+
+        // 1. Handle "tomorrow" and similar keywords
+        if (normalizedText.contains("tomorrow")) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            return calendar
+        }
+        if (normalizedText.contains("today")) return calendar
+
+        // 2. Handle "next year [month]" logic
+        if (normalizedText.contains("next year")) {
+            calendar.add(Calendar.YEAR, 1)
+            parseMonthInto(normalizedText, calendar)
+            setLastDayOfMonth(calendar)
+            return calendar
+        }
+
+        // 3. Handle relative time ("X years", "X months", "X days")
+        // Use word boundaries to avoid matching inside years
+        val yearRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+years?").matcher(normalizedText)
+        if (yearRelMatcher.find()) {
+            calendar.add(Calendar.YEAR, yearRelMatcher.group(1)!!.toInt())
+            setLastDayOfMonth(calendar)
+            return calendar
+        }
+        
+        val monthRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+months?").matcher(normalizedText)
+        if (monthRelMatcher.find()) {
+            calendar.add(Calendar.MONTH, monthRelMatcher.group(1)!!.toInt())
+            setLastDayOfMonth(calendar)
+            return calendar
+        }
+
+        val weekRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+weeks?").matcher(normalizedText)
+        if (weekRelMatcher.find()) {
+            calendar.add(Calendar.WEEK_OF_YEAR, weekRelMatcher.group(1)!!.toInt())
+            return calendar
+        }
+
+        val dayRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+days?").matcher(normalizedText)
+        if (dayRelMatcher.find()) {
+            calendar.add(Calendar.DAY_OF_YEAR, dayRelMatcher.group(1)!!.toInt())
+            return calendar
+        }
+
+        // 4. Handle specific month/year logic (e.g., "December 2028" or "2028 December")
+        val monthSuccess = parseMonthInto(normalizedText, calendar)
+        val yearMatcher = Pattern.compile("\\b(\\d{4})\\b").matcher(normalizedText)
+        val yearFound = yearMatcher.find()
+        
+        if (yearFound) {
+            calendar.set(Calendar.YEAR, yearMatcher.group(1)!!.toInt())
+        }
+
+        if (monthSuccess || yearFound) {
+            // Check if a specific day is mentioned (1-31), but ignore the year match
+            val dayMatcher = Pattern.compile("\\b(\\d{1,2})\\b").matcher(normalizedText)
+            var dayFound = false
+            while (dayMatcher.find()) {
+                val potentialDay = dayMatcher.group(1)!!.toInt()
+                val matchStart = dayMatcher.start()
+                
+                // Ensure match is NOT part of the already found year
+                val isPartOfYear = yearFound && matchStart >= yearMatcher.start() && matchStart < yearMatcher.end()
+                
+                if (potentialDay in 1..31 && !isPartOfYear) {
+                    calendar.set(Calendar.DAY_OF_MONTH, potentialDay)
+                    dayFound = true
+                    break
+                }
+            }
+
+            if (!dayFound) {
+                setLastDayOfMonth(calendar)
+            }
+            
+            // If month mentioned but it passed this year, and no year was specified, assume next year
+            if (monthSuccess && !yearFound && calendar.before(Calendar.getInstance())) {
+                calendar.add(Calendar.YEAR, 1)
+                setLastDayOfMonth(calendar)
+            }
+            return calendar
+        }
+
+        return null
+    }
+
+    private fun parseMonthInto(text: String, cal: Calendar): Boolean {
+        val months = listOf("january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december")
+        val shortMonths = listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+        for (i in months.indices) {
+            if (text.contains(months[i]) || text.contains(shortMonths[i])) {
+                cal.set(Calendar.MONTH, i)
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun setLastDayOfMonth(cal: Calendar) {
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+    }
+
     private fun showAllProducts() {
         val products = dbHelper.getAllProducts()
         if (products.isEmpty()) {
             toast("No products found")
             return
         }
-        // Sorting is handled by sortProducts which respects the user's settings
         showResults(sortProducts(products))
+    }
+
+    private fun searchProduct() {
+        val name = searchProductInput.text.toString().trim()
+        if (name.isBlank()) {
+            toast("Please enter product name")
+            return
+        }
+        val products = dbHelper.getProductsByName(name)
+        if (products.isEmpty()) {
+            toast("No product found")
+            return
+        }
+        showResults(sortProducts(products))
+        searchProductInput.text.clear()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun searchByDate() {
+        val searchDate = getMillisForMidnight(
+            searchDatePicker.year,
+            searchDatePicker.month,
+            searchDatePicker.dayOfMonth
+        )
+        val products = dbHelper.getProductsByExpiryDate(searchDate)
+        if (products.isEmpty()) {
+            toast("No products found for the selected expiry date.")
+            return
+        }
+        showResults(sortProducts(products))
+    }
+
+    private fun searchByDateRange() {
+        val startDate = Calendar.getInstance().apply {
+            set(startDatePicker.year, startDatePicker.month, startDatePicker.dayOfMonth, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val endDate = Calendar.getInstance().apply {
+            set(endDatePicker.year, endDatePicker.month, endDatePicker.dayOfMonth, 23, 59, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        if (startDate > endDate) {
+            toast("Start date cannot be after end date")
+            return
+        }
+
+        val products = dbHelper.getProductsByExpiryDateRange(startDate, endDate)
+        if (products.isEmpty()) {
+            toast("No products found in the selected range.")
+            return
+        }
+        showResults(sortProducts(products))
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun deleteByDate() {
+        val deleteDate = getMillisForMidnight(
+            deleteDatePicker.year,
+            deleteDatePicker.month,
+            deleteDatePicker.dayOfMonth
+        )
+        val deletedRows = dbHelper.delProductsByExpiryDate(deleteDate)
+        toast("$deletedRows product(s) deleted")
+        updateHomeStats()
     }
 
     private fun fetchProductNameFromBarcode(barcode: String) {
         val url = "https://world.openfoodfacts.org/api/v0/product/$barcode.json"
         val request = Request.Builder().url(url).build()
-
         productNameInput.setText("Searching...")
-
         httpClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread {
@@ -374,19 +628,16 @@ class MainActivity : AppCompatActivity() {
                     toast("API error: ${e.message}")
                 }
             }
-
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!response.isSuccessful) {
                         runOnUiThread { productNameInput.setText(barcode) }
                         return
                     }
-
                     val responseData = response.body?.string()
                     if (responseData != null) {
                         val json = JSONObject(responseData)
-                        val status = json.optInt("status")
-                        if (status == 1) {
+                        if (json.optInt("status") == 1) {
                             val product = json.optJSONObject("product")
                             val productName = product?.optString("product_name") ?: barcode
                             runOnUiThread {
@@ -412,7 +663,6 @@ class MainActivity : AppCompatActivity() {
                 val day = parts[0].toInt()
                 val month = parts[1].toInt() - 1
                 val year = parts[2].toInt()
-
                 expiryDatePicker.updateDate(year, month, day)
                 selectedExpiryDateText.text = formatDateText(year, month, day)
                 toast("Expiry date scanned: $dateStr")
@@ -424,11 +674,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-
+            val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             if (!granted) {
                 requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -494,112 +740,63 @@ class MainActivity : AppCompatActivity() {
 
     private fun showExpiryDatePickerDialog() {
         val calendar = Calendar.getInstance()
-
-        val dialog = DatePickerDialog(
-            this,
-            { _, selectedYear, selectedMonth, selectedDay ->
-                selectedExpiryDateText.text =
-                    formatDateText(selectedYear, selectedMonth, selectedDay)
-                expiryDatePicker.updateDate(selectedYear, selectedMonth, selectedDay)
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
-
-        dialog.show()
+        DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDay ->
+            selectedExpiryDateText.text = formatDateText(selectedYear, selectedMonth, selectedDay)
+            expiryDatePicker.updateDate(selectedYear, selectedMonth, selectedDay)
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
     }
 
     private fun showExpirySearchDatePickerDialog() {
         val calendar = Calendar.getInstance()
-
-        val dialog = DatePickerDialog(
-            this,
-            { _, selectedYear, selectedMonth, selectedDay ->
-                searchExpiryDateText.text =
-                    formatDateText(selectedYear, selectedMonth, selectedDay)
-                searchDatePicker.updateDate(selectedYear, selectedMonth, selectedDay)
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
-
-        dialog.show()
+        DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDay ->
+            searchExpiryDateText.text = formatDateText(selectedYear, selectedMonth, selectedDay)
+            searchDatePicker.updateDate(selectedYear, selectedMonth, selectedDay)
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
     }
 
     private fun showDeleteDatePickerDialog() {
         val calendar = Calendar.getInstance()
-
-        val dialog = DatePickerDialog(
-            this,
-            { _, selectedYear, selectedMonth, selectedDay ->
-                deleteExpiryDateText.text =
-                    formatDateText(selectedYear, selectedMonth, selectedDay)
-                deleteDatePicker.updateDate(selectedYear, selectedMonth, selectedDay)
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
-
-        dialog.show()
+        DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDay ->
+            deleteExpiryDateText.text = formatDateText(selectedYear, selectedMonth, selectedDay)
+            deleteDatePicker.updateDate(selectedYear, selectedMonth, selectedDay)
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
     }
 
     private fun formatDateText(year: Int, zeroBasedMonth: Int, day: Int): String {
-        return String.format(
-            Locale.getDefault(),
-            "%02d/%02d/%04d",
-            day,
-            zeroBasedMonth + 1,
-            year
-        )
+        return String.format(Locale.getDefault(), "%02d/%02d/%04d", day, zeroBasedMonth + 1, year)
     }
+
     private fun setupSettingsSpinners() {
         val timeUnits = TimeUnitOption.entries.map { it.name }
         val dateFormats = DateFormatOption.entries.map { it.name }
         val sortOrders = SortOrderOption.entries.map { it.name }
-
-        val timeUnitAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, timeUnits)
-        timeUnitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
+        val timeUnitAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, timeUnits).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
         spinnerDefaultReminderUnit.adapter = timeUnitAdapter
         spinnerRepeatUnit.adapter = timeUnitAdapter
         spinnerExpiringSoonUnit.adapter = timeUnitAdapter
         spinnerAutoDeleteUnit.adapter = timeUnitAdapter
-
-        val dateFormatAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, dateFormats)
-        dateFormatAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerDateFormat.adapter = dateFormatAdapter
-
-        val sortOrderAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, sortOrders)
-        sortOrderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerSortOrder.adapter = sortOrderAdapter
+        spinnerDateFormat.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, dateFormats).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        spinnerSortOrder.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, sortOrders).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
     }
+
     private fun loadSettingsIntoUi() {
         val settings = settingsManager.loadSettings()
-
         switchEnableAlerts.isChecked = settings.enableExpiryAlerts
-
         currentAlertHour = settings.defaultAlertHour
         currentAlertMinute = settings.defaultAlertMinute
         btnDefaultAlertTime.text = String.format(Locale.getDefault(), "%02d:%02d", currentAlertHour, currentAlertMinute)
-
         editDefaultReminderValue.setText(settings.defaultReminderLeadTimeValue.toString())
         spinnerDefaultReminderUnit.setSelection(TimeUnitOption.entries.indexOf(settings.defaultReminderLeadTimeUnit))
-
         editRepeatValue.setText(settings.repeatIntervalValue.toString())
         spinnerRepeatUnit.setSelection(TimeUnitOption.entries.indexOf(settings.repeatIntervalUnit))
-
         editExpiringSoonValue.setText(settings.expiringSoonThresholdValue.toString())
         spinnerExpiringSoonUnit.setSelection(TimeUnitOption.entries.indexOf(settings.expiringSoonThresholdUnit))
-
         editAutoDeleteValue.setText(settings.autoDeleteExpiredValue.toString())
         spinnerAutoDeleteUnit.setSelection(TimeUnitOption.entries.indexOf(settings.autoDeleteExpiredUnit))
-
         spinnerDateFormat.setSelection(DateFormatOption.entries.indexOf(settings.dateFormat))
         spinnerSortOrder.setSelection(SortOrderOption.entries.indexOf(settings.sortOrder))
     }
+
     private fun saveSettingsFromUi() {
         val settings = AppSettings(
             enableExpiryAlerts = switchEnableAlerts.isChecked,
@@ -616,154 +813,35 @@ class MainActivity : AppCompatActivity() {
             dateFormat = DateFormatOption.entries[spinnerDateFormat.selectedItemPosition],
             sortOrder = SortOrderOption.entries[spinnerSortOrder.selectedItemPosition]
         )
-
         settingsManager.saveSettings(settings)
         toast("Settings saved")
         updateHomeStats()
     }
+
     @RequiresApi(Build.VERSION_CODES.O)
     private fun getMillisForMidnight(year: Int, zeroBasedMonth: Int, day: Int): Long {
-        val localDate = LocalDate.of(year, zeroBasedMonth + 1, day)
-        return localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return LocalDate.of(year, zeroBasedMonth + 1, day).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun addProduct() {
         val name = productNameInput.text.toString().trim()
         val alarmDaysText = alarmDaysInput.text.toString().trim()
-
-        if (name.isBlank()) {
-            toast("Please enter product name")
-            return
-        }
-
-        if (alarmDaysText.isBlank()) {
-            toast("Please enter alarm days")
-            return
-        }
-
+        if (name.isBlank()) { toast("Please enter product name"); return }
+        if (alarmDaysText.isBlank()) { toast("Please enter alarm days"); return }
         val alarmDays = alarmDaysText.toLongOrNull()
-        if (alarmDays == null || alarmDays < 0) {
-            toast("Please enter a valid number of alarm days")
-            return
-        }
-
-        val expiryDate = getMillisForMidnight(
-            expiryDatePicker.year,
-            expiryDatePicker.month,
-            expiryDatePicker.dayOfMonth
-        )
-
-        val today = getMillisForMidnight(
-            Calendar.getInstance().get(Calendar.YEAR),
-            Calendar.getInstance().get(Calendar.MONTH),
-            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-        )
-
-        if (expiryDate < today) {
-            toast("Expiry date cannot be in the past")
-            return
-        }
-
+        if (alarmDays == null || alarmDays < 0) { toast("Please enter a valid number of alarm days"); return }
+        val expiryDate = getMillisForMidnight(expiryDatePicker.year, expiryDatePicker.month, expiryDatePicker.dayOfMonth)
+        val today = getMillisForMidnight(Calendar.getInstance().get(Calendar.YEAR), Calendar.getInstance().get(Calendar.MONTH), Calendar.getInstance().get(Calendar.DAY_OF_MONTH))
+        if (expiryDate < today) { toast("Expiry date cannot be in the past"); return }
         val alarmDate = expiryDate - (alarmDays * 24L * 60L * 60L * 1000L)
-
         val insertedId = dbHelper.addProduct(name, expiryDate, alarmDate)
-
-        if (insertedId == -1L) {
-            toast("Failed to save product")
-            return
-        }
-
-        setAlarm(
-            productId = insertedId,
-            productName = name,
-            expiryDate = expiryDate,
-            alarmDate = alarmDate
-        )
-
+        if (insertedId == -1L) { toast("Failed to save product"); return }
+        setAlarm(insertedId, name, expiryDate, alarmDate)
         toast("Product added")
-
         productNameInput.text.clear()
         alarmDaysInput.text.clear()
         selectedExpiryDateText.text = "Select expiry date"
-
-        updateHomeStats()
-    }
-
-    private fun searchProduct() {
-        val name = searchProductInput.text.toString().trim()
-
-        if (name.isBlank()) {
-            toast("Please enter product name")
-            return
-        }
-
-        val products = dbHelper.getProductsByName(name)
-
-        if (products.isEmpty()) {
-            toast("No product found")
-            return
-        }
-
-        showResults(sortProducts(products))
-        searchProductInput.text.clear()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun searchByDate() {
-        val searchDate = getMillisForMidnight(
-            searchDatePicker.year,
-            searchDatePicker.month,
-            searchDatePicker.dayOfMonth
-        )
-
-        val products = dbHelper.getProductsByExpiryDate(searchDate)
-
-        if (products.isEmpty()) {
-            toast("No products found for the selected expiry date.")
-            return
-        }
-
-        showResults(sortProducts(products))
-    }
-
-    private fun searchByDateRange() {
-        val startDate = Calendar.getInstance().apply {
-            set(startDatePicker.year, startDatePicker.month, startDatePicker.dayOfMonth, 0, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
-        val endDate = Calendar.getInstance().apply {
-            set(endDatePicker.year, endDatePicker.month, endDatePicker.dayOfMonth, 23, 59, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.timeInMillis
-
-        if (startDate > endDate) {
-            toast("Start date cannot be after end date")
-            return
-        }
-
-        val products = dbHelper.getProductsByExpiryDateRange(startDate, endDate)
-
-        if (products.isEmpty()) {
-            toast("No products found in the selected range.")
-            return
-        }
-
-        showResults(sortProducts(products))
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun deleteByDate() {
-        val deleteDate = getMillisForMidnight(
-            deleteDatePicker.year,
-            deleteDatePicker.month,
-            deleteDatePicker.dayOfMonth
-        )
-
-        val deletedRows = dbHelper.delProductsByExpiryDate(deleteDate)
-
-        toast("$deletedRows product(s) deleted")
         updateHomeStats()
     }
 
@@ -825,91 +903,33 @@ class MainActivity : AppCompatActivity() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "PRODUCT_EXPIRY_CHANNEL",
-                "ProductExpiryChannel",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Channel for Product Expiry Notifications"
-            }
-
-            val notificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            notificationManager.createNotificationChannel(channel)
+            val channel = NotificationChannel("PRODUCT_EXPIRY_CHANNEL", "ProductExpiryChannel", NotificationManager.IMPORTANCE_DEFAULT).apply { description = "Channel for Product Expiry Notifications" }
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
         }
-    }
-
-    private fun getExpiryStatus(expiryMillis: Long): String {
-        val today = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
-        val diff = expiryMillis - today
-        val days = diff / (24 * 60 * 60 * 1000)
-
-        return when {
-            days < 0 -> "❌ Expired"
-            days == 0L -> "⚠️ Expires today"
-            days <= 3 -> "⚠️ $days day(s) left"
-            else -> "✅ $days day(s) left"
-        }
-    }
-
-    private fun getDaysLeft(expiryMillis: Long): Long {
-        val today = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
-        return (expiryMillis - today) / (24L * 60L * 60L * 1000L)
     }
 
     private fun updateHomeStats() {
         val settings = settingsManager.loadSettings()
-        val thresholdMillis = convertToMillis(
-            settings.expiringSoonThresholdValue,
-            settings.expiringSoonThresholdUnit
-        )
-
+        val thresholdMillis = convertToMillis(settings.expiringSoonThresholdValue, settings.expiringSoonThresholdUnit)
         val allProducts = dbHelper.getAllProducts()
         val total = allProducts.size
         val expired = allProducts.count { it.expiryDate < System.currentTimeMillis() }
-        val expiringSoon = allProducts.count {
-            val diff = it.expiryDate - System.currentTimeMillis()
-            diff in 0..thresholdMillis
-        }
-
+        val expiringSoon = allProducts.count { (it.expiryDate - System.currentTimeMillis()) in 0..thresholdMillis }
         homeStatsText.text = "Total products: $total\nExpired: $expired\nExpiring soon: $expiringSoon"
     }
+
     private fun loadDefaultsIntoAddProduct() {
         val settings = settingsManager.loadSettings()
-        alarmDaysInput.setText(
-            if (settings.defaultReminderLeadTimeUnit == TimeUnitOption.DAYS)
-                settings.defaultReminderLeadTimeValue.toString()
-            else
-                ""
-        )
+        alarmDaysInput.setText(if (settings.defaultReminderLeadTimeUnit == TimeUnitOption.DAYS) settings.defaultReminderLeadTimeValue.toString() else "")
     }
+
     private fun cleanupOldExpiredProducts() {
         val settings = settingsManager.loadSettings()
-        val retentionMillis = convertToMillis(
-            settings.autoDeleteExpiredValue,
-            settings.autoDeleteExpiredUnit
-        )
-
-        val cutoffMillis = System.currentTimeMillis() - retentionMillis
+        val cutoffMillis = System.currentTimeMillis() - convertToMillis(settings.autoDeleteExpiredValue, settings.autoDeleteExpiredUnit)
         val deletedRows = dbHelper.deleteExpiredProductsOlderThan(cutoffMillis)
-
-        if (deletedRows > 0) {
-            toast("Auto-cleaned $deletedRows old expired product(s)")
-        }
+        if (deletedRows > 0) toast("Auto-cleaned $deletedRows old expired product(s)")
     }
+
     private fun sortProducts(products: List<Product>): List<Product> {
         return when (settingsManager.loadSettings().sortOrder) {
             SortOrderOption.EXPIRY_ASC -> products.sortedBy { it.expiryDate }
@@ -917,6 +937,7 @@ class MainActivity : AppCompatActivity() {
             SortOrderOption.RECENTLY_ADDED -> products.sortedByDescending { it.id }
         }
     }
+
     private fun showResults(products: List<Product>) {
         searchContent.visibility = View.GONE
         recyclerView.adapter = ProductResultAdapter(products)
@@ -931,16 +952,6 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = null
     }
 
-    private fun formatMillis(timeMillis: Long): String {
-        val settings = settingsManager.loadSettings()
-        val pattern = when (settings.dateFormat) {
-            DateFormatOption.DD_MM_YYYY -> "dd/MM/yyyy"
-            DateFormatOption.MM_DD_YYYY -> "MM/dd/yyyy"
-            DateFormatOption.YYYY_MM_DD -> "yyyy-MM-dd"
-        }
-
-        return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(timeMillis))
-    }
     private fun convertToMillis(value: Int, unit: TimeUnitOption): Long {
         return when (unit) {
             TimeUnitOption.MINUTES -> value * 60_000L
@@ -951,6 +962,7 @@ class MainActivity : AppCompatActivity() {
             TimeUnitOption.YEARS -> value * 365L * 86_400_000L
         }
     }
+
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }

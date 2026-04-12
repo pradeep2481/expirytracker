@@ -128,6 +128,14 @@
                         android:hint="Product Name" />
 
                     <ImageButton
+                        android:id="@+id/btnVoiceInput"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@android:drawable/ic_btn_speak_now"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Voice Input" />
+
+                    <ImageButton
                         android:id="@+id/btnScanBarcode"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
