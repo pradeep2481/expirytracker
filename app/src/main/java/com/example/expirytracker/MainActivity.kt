@@ -404,7 +404,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Clean product name from filler words
+        // Clean product name from common filler words
         val wordsToExclude = listOf("add ", "a ", "an ", "some ")
         for (word in wordsToExclude) {
             if (productName.lowercase().startsWith(word)) {
@@ -434,14 +434,14 @@ class MainActivity : AppCompatActivity() {
         val text = dateStr.lowercase(Locale.getDefault())
         val calendar = Calendar.getInstance()
         
-        // Normalize common number words to digits
+        // Normalize common number words
         val normalizedText = text
             .replace("one", "1").replace("two", "2").replace("three", "3")
             .replace("four", "4").replace("five", "5").replace("six", "6")
             .replace("seven", "7").replace("eight", "8").replace("nine", "9")
             .replace("ten", "10")
 
-        // 1. Handle "tomorrow" and similar keywords
+        // 1. Handle keywords like "tomorrow", "today"
         if (normalizedText.contains("tomorrow")) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
             return calendar
@@ -457,30 +457,30 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 3. Handle relative time ("X years", "X months", "X days")
-        // Use word boundaries to avoid matching inside years
-        val yearRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+years?").matcher(normalizedText)
-        if (yearRelMatcher.find()) {
-            calendar.add(Calendar.YEAR, yearRelMatcher.group(1)!!.toInt())
+        if (normalizedText.contains("year")) {
+            val matcher = Pattern.compile("(\\d+)").matcher(normalizedText)
+            val years = if (matcher.find()) matcher.group(1)!!.toInt() else 1
+            calendar.add(Calendar.YEAR, years)
             setLastDayOfMonth(calendar)
             return calendar
         }
-        
-        val monthRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+months?").matcher(normalizedText)
-        if (monthRelMatcher.find()) {
-            calendar.add(Calendar.MONTH, monthRelMatcher.group(1)!!.toInt())
+        if (normalizedText.contains("month")) {
+            val matcher = Pattern.compile("(\\d+)").matcher(normalizedText)
+            val months = if (matcher.find()) matcher.group(1)!!.toInt() else 1
+            calendar.add(Calendar.MONTH, months)
             setLastDayOfMonth(calendar)
             return calendar
         }
-
-        val weekRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+weeks?").matcher(normalizedText)
-        if (weekRelMatcher.find()) {
-            calendar.add(Calendar.WEEK_OF_YEAR, weekRelMatcher.group(1)!!.toInt())
+        if (normalizedText.contains("week")) {
+            val matcher = Pattern.compile("(\\d+)").matcher(normalizedText)
+            val weeks = if (matcher.find()) matcher.group(1)!!.toInt() else 1
+            calendar.add(Calendar.WEEK_OF_YEAR, weeks)
             return calendar
         }
-
-        val dayRelMatcher = Pattern.compile("\\b(\\d+)\\b\\s+days?").matcher(normalizedText)
-        if (dayRelMatcher.find()) {
-            calendar.add(Calendar.DAY_OF_YEAR, dayRelMatcher.group(1)!!.toInt())
+        if (normalizedText.contains("day")) {
+            val matcher = Pattern.compile("(\\d+)").matcher(normalizedText)
+            val days = if (matcher.find()) matcher.group(1)!!.toInt() else 1
+            calendar.add(Calendar.DAY_OF_YEAR, days)
             return calendar
         }
 
@@ -488,7 +488,6 @@ class MainActivity : AppCompatActivity() {
         val monthSuccess = parseMonthInto(normalizedText, calendar)
         val yearMatcher = Pattern.compile("\\b(\\d{4})\\b").matcher(normalizedText)
         val yearFound = yearMatcher.find()
-        
         if (yearFound) {
             calendar.set(Calendar.YEAR, yearMatcher.group(1)!!.toInt())
         }
@@ -498,19 +497,13 @@ class MainActivity : AppCompatActivity() {
             val dayMatcher = Pattern.compile("\\b(\\d{1,2})\\b").matcher(normalizedText)
             var dayFound = false
             while (dayMatcher.find()) {
-                val potentialDay = dayMatcher.group(1)!!.toInt()
-                val matchStart = dayMatcher.start()
-                
-                // Ensure match is NOT part of the already found year
-                val isPartOfYear = yearFound && matchStart >= yearMatcher.start() && matchStart < yearMatcher.end()
-                
-                if (potentialDay in 1..31 && !isPartOfYear) {
-                    calendar.set(Calendar.DAY_OF_MONTH, potentialDay)
+                val dayVal = dayMatcher.group(1)!!.toInt()
+                if (dayVal in 1..31 && (!yearFound || dayVal != calendar.get(Calendar.YEAR) % 100)) {
+                    calendar.set(Calendar.DAY_OF_MONTH, dayVal)
                     dayFound = true
                     break
                 }
             }
-
             if (!dayFound) {
                 setLastDayOfMonth(calendar)
             }
@@ -831,9 +824,21 @@ class MainActivity : AppCompatActivity() {
         if (alarmDaysText.isBlank()) { toast("Please enter alarm days"); return }
         val alarmDays = alarmDaysText.toLongOrNull()
         if (alarmDays == null || alarmDays < 0) { toast("Please enter a valid number of alarm days"); return }
+        
         val expiryDate = getMillisForMidnight(expiryDatePicker.year, expiryDatePicker.month, expiryDatePicker.dayOfMonth)
         val today = getMillisForMidnight(Calendar.getInstance().get(Calendar.YEAR), Calendar.getInstance().get(Calendar.MONTH), Calendar.getInstance().get(Calendar.DAY_OF_MONTH))
+        
         if (expiryDate < today) { toast("Expiry date cannot be in the past"); return }
+
+        // Logic check: Ensure alarmDays is not greater than days until expiry
+        val diffMillis = expiryDate - today
+        val maxAlarmDays = diffMillis / (24 * 60 * 60 * 1000)
+        
+        if (alarmDays > maxAlarmDays) {
+            toast("Alarm cannot be set before today. Max days: $maxAlarmDays")
+            return
+        }
+
         val alarmDate = expiryDate - (alarmDays * 24L * 60L * 60L * 1000L)
         val insertedId = dbHelper.addProduct(name, expiryDate, alarmDate)
         if (insertedId == -1L) { toast("Failed to save product"); return }
